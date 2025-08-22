@@ -33,9 +33,11 @@ This project was created with the help of **ChatGPT 🤖** and designed by **Pri
 
 ---
 
-## 📸 Preview
-[Preview image not loading](preview.png)
+## 🖼️ Preview
 
+<p align="center">
+  <img src="preview.png" alt="Preview not loading" width="600" />
+</p>
 ---
 
 ## 🛠️ Installation
