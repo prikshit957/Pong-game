@@ -18,7 +18,7 @@ This project was created with the help of **ChatGPT 🤖** and designed by **Pri
 ---
 
 ## 🖥️ Demo
-👉 [Play the game online](#) *(Add your GitHub Pages or hosting link here once deployed)*  
+👉 [Play the game online](https://pongos.netlify.app/) 
 
 ---
 
