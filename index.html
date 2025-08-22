@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pong Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: "Poppins", sans-serif;
+      color: white;
+    }
+
+    .game-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      height: auto;
+      max-width: 800px;
+      aspect-ratio: 16 / 10;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 16px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .controls {
+      display: none;
+      margin-top: 15px;
+      width: 100%;
+      justify-content: space-between;
+      padding: 0 30px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    footer {
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+    footer a { color: #ffd369; text-decoration: none; }
+
+    @media (max-width: 768px) {
+      .controls { display: flex; }
+      canvas { width: 95vw; aspect-ratio: 16 / 10; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <canvas id="pong" width="800" height="500"></canvas>
+
+    <!-- Start Menu -->
+    <div class="overlay" id="startMenu" style="display:flex;">
+      <h2>🎮 Pong Game</h2>
+      <p>First to miss loses. Good luck!</p>
+      <button id="startBtn" class="btn btn-light btn-lg">
+        <i class="bi bi-play-fill"></i> Start Game
+      </button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div class="overlay" id="gameOverScreen">
+      <i class="bi bi-emoji-dizzy" style="font-size:3rem;"></i>
+      <p id="gameOverText">Game Over</p>
+      <button id="restartBtn" class="btn btn-light btn-lg">
+        <i class="bi bi-arrow-clockwise"></i> Restart
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <button id="leftUp" class="btn btn-dark btn-lg"><i class="bi bi-caret-up-fill"></i></button>
+      <button id="leftDown" class="btn btn-dark btn-lg"><i class="bi bi-caret-down-fill"></i></button>
+    </div>
+    <div class="control-group">
+      <button id="rightUp" class="btn btn-dark btn-lg"><i class="bi bi-caret-up-fill"></i></button>
+      <button id="rightDown" class="btn btn-dark btn-lg"><i class="bi bi-caret-down-fill"></i></button>
+    </div>
+  </div>
+
+  <!-- Credits -->
+  <footer>
+    Made by <strong>Prikshit</strong> — 
+    <a href="https://instagram.com/prikshit.957" target="_blank">@prikshit.957</a>
+  </footer>
+
+  <script>
+    const canvas = document.getElementById("pong");
+    const ctx = canvas.getContext("2d");
+
+    const startMenu = document.getElementById("startMenu");
+    const startBtn = document.getElementById("startBtn");
+    const overlay = document.getElementById("gameOverScreen");
+    const restartBtn = document.getElementById("restartBtn");
+    const gameOverText = document.getElementById("gameOverText");
+
+    let gameRunning = false;
+
+    const ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 8, speed: 5, dx: 4, dy: 4 };
+
+    const paddleWidth = 10, paddleHeight = 100;
+    const leftPaddle = { x: 0, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, dy: 8 };
+    const rightPaddle = { x: canvas.width - paddleWidth, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, dy: 8 };
+
+    let score = { left: 0, right: 0 };
+    let highScore = localStorage.getItem("pongHighScore") || 0;
+
+    function drawRect(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
+    function drawCircle(x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.closePath(); ctx.fill(); }
+    function drawText(text, x, y, size, color) { ctx.fillStyle = color; ctx.font = `${size}px Poppins`; ctx.fillText(text, x, y); }
+
+    const keys = {};
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+
+    function movePaddles() {
+      if (keys["w"] && leftPaddle.y > 0) leftPaddle.y -= leftPaddle.dy;
+      if (keys["s"] && leftPaddle.y + leftPaddle.height < canvas.height) leftPaddle.y += leftPaddle.dy;
+      if (keys["ArrowUp"] && rightPaddle.y > 0) rightPaddle.y -= rightPaddle.dy;
+      if (keys["ArrowDown"] && rightPaddle.y + rightPaddle.height < canvas.height) rightPaddle.y += rightPaddle.dy;
+    }
+
+    function bindButton(id, paddle, direction) {
+      const btn = document.getElementById(id);
+      btn.addEventListener("mousedown", () => paddle.move = direction);
+      btn.addEventListener("mouseup", () => paddle.move = 0);
+      btn.addEventListener("touchstart", e => { e.preventDefault(); paddle.move = direction; });
+      btn.addEventListener("touchend", e => { e.preventDefault(); paddle.move = 0; });
+    }
+    bindButton("leftUp", leftPaddle, -1);
+    bindButton("leftDown", leftPaddle, 1);
+    bindButton("rightUp", rightPaddle, -1);
+    bindButton("rightDown", rightPaddle, 1);
+
+    function resetBall() {
+      ball.x = canvas.width / 2; ball.y = canvas.height / 2;
+      ball.dx = -ball.dx; ball.dy = 4 * (Math.random() > 0.5 ? 1 : -1);
+      ball.speed = 5;
+    }
+
+    function collision(b, p) {
+      return b.x - b.radius < p.x + p.width && b.x + b.radius > p.x &&
+             b.y - b.radius < p.y + p.height && b.y + b.radius > p.y;
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      movePaddles();
+      if (leftPaddle.move === -1 && leftPaddle.y > 0) leftPaddle.y -= leftPaddle.dy;
+      if (leftPaddle.move === 1 && leftPaddle.y + leftPaddle.height < canvas.height) leftPaddle.y += leftPaddle.dy;
+      if (rightPaddle.move === -1 && rightPaddle.y > 0) rightPaddle.y -= rightPaddle.dy;
+      if (rightPaddle.move === 1 && rightPaddle.y + rightPaddle.height < canvas.height) rightPaddle.y += rightPaddle.dy;
+
+      ball.x += ball.dx; ball.y += ball.dy;
+
+      if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) ball.dy *= -1;
+
+      let paddle = ball.x < canvas.width / 2 ? leftPaddle : rightPaddle;
+      if (collision(ball, paddle)) {
+        let collidePoint = ball.y - (paddle.y + paddle.height / 2);
+        collidePoint = collidePoint / (paddle.height / 2);
+        let angleRad = collidePoint * (Math.PI / 4);
+        let direction = ball.x < canvas.width / 2 ? 1 : -1;
+        ball.dx = direction * ball.speed * Math.cos(angleRad);
+        ball.dy = ball.speed * Math.sin(angleRad);
+        ball.speed += 0.2;
+      }
+
+      if (ball.x - ball.radius < 0) {
+        score.right++;
+        checkHighScore();
+        gameOver("Right Player Scores!");
+      }
+      if (ball.x + ball.radius > canvas.width) {
+        score.left++;
+        checkHighScore();
+        gameOver("Left Player Scores!");
+      }
+    }
+
+    function checkHighScore() {
+      let total = score.left + score.right;
+      if (total > highScore) {
+        highScore = total;
+        localStorage.setItem("pongHighScore", highScore);
+      }
+    }
+
+    function render() {
+      drawRect(0, 0, canvas.width, canvas.height, "rgba(255,255,255,0.9)");
+      drawRect(leftPaddle.x, leftPaddle.y, leftPaddle.width, leftPaddle.height, "black");
+      drawRect(rightPaddle.x, rightPaddle.y, rightPaddle.width, rightPaddle.height, "black");
+      drawCircle(ball.x, ball.y, ball.radius, "black");
+
+      drawText(score.left, canvas.width / 4, 50, 30, "black");
+      drawText(score.right, 3 * canvas.width / 4, 50, 30, "black");
+      drawText(`High Score: ${highScore}`, canvas.width / 2 - 80, 30, 20, "gray");
+    }
+
+    function gameOver(message) {
+      gameRunning = false;
+      overlay.style.display = "flex";
+      gameOverText.textContent = message;
+    }
+
+    function animate() {
+      if (!gameRunning) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      update();
+      render();
+      requestAnimationFrame(animate);
+    }
+
+    startBtn.addEventListener("click", () => {
+      startMenu.style.display = "none";
+      gameRunning = true;
+      animate();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      overlay.style.display = "none";
+      resetBall();
+      gameRunning = true;
+      animate();
+    });
+  </script>
+</body>
+</html>
